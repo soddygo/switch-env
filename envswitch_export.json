@@ -1,0 +1,83 @@
+{
+  "configs": {
+    "test-config": {
+      "alias": "test-config",
+      "variables": {
+        "ANTHROPIC_BASE_URL": "https://api.deepseek.com",
+        "ANTHROPIC_MODEL": "deepseek-chat"
+      },
+      "description": "Test configuration for DeepSeek",
+      "created_at": "2025-08-29T07:45:41.424140Z",
+      "updated_at": "2025-08-29T07:45:41.424140Z"
+    },
+    "interactive-test": {
+      "alias": "interactive-test",
+      "variables": {
+        "TEST_VAR1": "value1",
+        "TEST_VAR2": "value2"
+      },
+      "description": "Interactive test config",
+      "created_at": "2025-08-29T07:53:58.853369Z",
+      "updated_at": "2025-08-29T07:53:58.853369Z"
+    },
+    "deepseek": {
+      "alias": "deepseek",
+      "variables": {
+        "ANTHROPIC_MODEL": "deepseek-chat",
+        "ANTHROPIC_BASE_URL": "https://api.deepseek.com",
+        "ANTHROPIC_AUTH_TOKEN": "sk-test123"
+      },
+      "description": "DeepSeek v3.1 configuration",
+      "created_at": "2025-08-29T07:17:33.530117Z",
+      "updated_at": "2025-08-29T07:17:33.530117Z"
+    },
+    "file-test": {
+      "alias": "file-test",
+      "variables": {
+        "BASE_URL": "https://api.example.com",
+        "MODEL": "gpt-4",
+        "API_KEY": "test-api-key-123",
+        "TIMEOUT": "30",
+        "DEBUG": "true"
+      },
+      "description": "Configuration from file",
+      "created_at": "2025-08-29T07:54:12.660209Z",
+      "updated_at": "2025-08-29T07:54:12.660209Z"
+    },
+    "test-config2": {
+      "alias": "test-config2",
+      "variables": {
+        "DB_HOST": "localhost",
+        "DB_NAME": "testdb",
+        "DB_PORT": "5432"
+      },
+      "description": "Test configuration 2",
+      "created_at": "2025-08-29T08:18:30.682568Z",
+      "updated_at": "2025-08-29T08:18:30.682568Z"
+    },
+    "test-config1": {
+      "alias": "test-config1",
+      "variables": {
+        "API_URL": "https://api.test.com",
+        "API_KEY": "test123"
+      },
+      "description": "Test configuration 1",
+      "created_at": "2025-08-29T08:18:24.876383Z",
+      "updated_at": "2025-08-29T08:18:24.876383Z"
+    },
+    "kimi": {
+      "alias": "kimi",
+      "variables": {
+        "ANTHROPIC_AUTH_TOKEN": "sk-kimi123",
+        "ANTHROPIC_MODEL": "moonshot-v1-8k",
+        "ANTHROPIC_BASE_URL": "https://api.moonshot.cn"
+      },
+      "description": "Kimi k2 configuration",
+      "created_at": "2025-08-29T07:20:18.944453Z",
+      "updated_at": "2025-08-29T07:20:18.944453Z"
+    }
+  },
+  "active_config": "test-config",
+  "last_modified": "2025-08-29T08:18:30.682569Z",
+  "version": "1.0"
+}

@@ -1,0 +1,30 @@
+[package]
+name = "envswitch"
+version = "0.1.0"
+edition = "2021"
+description = "A tool for managing and switching environment variable configurations"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT"
+repository = "https://github.com/soddygo/envswitch"
+
+[lib]
+name = "envswitch"
+path = "src/lib.rs"
+
+[[bin]]
+name = "envswitch"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "6.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3.8"

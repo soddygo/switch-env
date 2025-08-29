@@ -1,0 +1,228 @@
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(name = "envswitch")]
+#[command(about = "A tool for managing and switching environment variable configurations")]
+#[command(long_about = "EnvSwitch helps you manage different sets of environment variables and quickly switch between them. Perfect for switching between different AI model configurations, development environments, or any other environment-specific settings.")]
+#[command(version = "0.1.0")]
+#[command(author = "EnvSwitch Team")]
+pub struct Cli {
+    /// Enable verbose output
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
+    
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    /// Create or update a configuration
+    #[command(alias = "add")]
+    Set {
+        /// Configuration alias name
+        alias: String,
+        /// Environment variables in KEY=VALUE format
+        #[arg(short, long, value_parser = parse_env_var)]
+        env: Vec<(String, String)>,
+        /// Description for the configuration
+        #[arg(short, long)]
+        description: Option<String>,
+        /// Read environment variables from a file
+        #[arg(short, long, conflicts_with = "env")]
+        file: Option<String>,
+        /// Replace all variables instead of merging (only for updates)
+        #[arg(short, long)]
+        replace: bool,
+        /// Interactive mode to add variables one by one
+        #[arg(short, long, conflicts_with_all = ["env", "file"])]
+        interactive: bool,
+    },
+    /// Switch to a configuration
+    #[command(alias = "switch")]
+    Use {
+        /// Configuration alias to activate
+        alias: String,
+        /// Show commands without executing (dry run)
+        #[arg(short, long)]
+        dry_run: bool,
+    },
+    /// List all configurations
+    #[command(alias = "ls")]
+    List {
+        /// Show detailed information
+        #[arg(short, long)]
+        verbose: bool,
+        /// Display in table format
+        #[arg(short, long)]
+        table: bool,
+        /// Show only active configuration
+        #[arg(short, long)]
+        active: bool,
+    },
+    /// Show current active configuration and environment status
+    #[command(alias = "info")]
+    Status {
+        /// Show only Claude-specific variables
+        #[arg(short, long)]
+        claude: bool,
+        /// Display in table format
+        #[arg(short, long)]
+        table: bool,
+        /// Show only mismatched variables
+        #[arg(short, long)]
+        mismatched: bool,
+    },
+    /// Edit a configuration interactively
+    Edit {
+        /// Configuration alias to edit
+        alias: String,
+    },
+    /// Delete a configuration
+    #[command(alias = "rm")]
+    Delete {
+        /// Configuration alias to delete
+        alias: String,
+        /// Skip confirmation prompt
+        #[arg(short, long)]
+        force: bool,
+    },
+    /// Export configurations to a file
+    Export {
+        /// Output file path (default: envswitch_export.json)
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Export only specific configurations
+        #[arg(short, long, value_delimiter = ',')]
+        configs: Vec<String>,
+        /// Export format (json, env, yaml)
+        #[arg(short, long, default_value = "json")]
+        format: String,
+        /// Include metadata (timestamps, descriptions)
+        #[arg(short, long)]
+        metadata: bool,
+        /// Pretty print output
+        #[arg(short, long)]
+        pretty: bool,
+    },
+    /// Import configurations from a file
+    Import {
+        /// Input file path
+        file: String,
+        /// Overwrite existing configurations
+        #[arg(short, long)]
+        force: bool,
+        /// Merge with existing configurations
+        #[arg(short, long)]
+        merge: bool,
+        /// Show what would be imported (dry run)
+        #[arg(short, long)]
+        dry_run: bool,
+        /// Skip validation of imported configurations
+        #[arg(short, long)]
+        skip_validation: bool,
+        /// Backup existing configurations before import
+        #[arg(short, long)]
+        backup: bool,
+    },
+    /// Show shell integration instructions and generate setup scripts
+    Setup {
+        /// Target shell (auto-detected if not specified)
+        #[arg(short, long)]
+        shell: Option<String>,
+        /// Generate shell integration script
+        #[arg(short, long)]
+        generate: bool,
+        /// Output file for generated script
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Install shell integration automatically
+        #[arg(short, long)]
+        install: bool,
+        /// Generate wrapper script with enhanced functionality
+        #[arg(short, long)]
+        wrapper: bool,
+    },
+    /// Generate shell initialization code for eval
+    Init {
+        /// Target shell (auto-detected if not specified)
+        #[arg(short, long)]
+        shell: Option<String>,
+        /// Generate completion scripts
+        #[arg(short, long)]
+        completions: bool,
+    },
+    /// Show getting started guide and examples
+    #[command(alias = "guide")]
+    Tutorial {
+        /// Show advanced usage examples
+        #[arg(short, long)]
+        advanced: bool,
+        /// Show examples for specific use case
+        #[arg(short, long)]
+        use_case: Option<String>,
+    },
+}
+
+/// Parse environment variable in KEY=VALUE format
+fn parse_env_var(s: &str) -> Result<(String, String), String> {
+    let parts: Vec<&str> = s.splitn(2, '=').collect();
+    if parts.len() != 2 {
+        return Err(format!("Invalid format '{}'. Expected KEY=VALUE", s));
+    }
+    Ok((parts[0].to_string(), parts[1].to_string()))
+}#[cfg(test
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_env_var_valid() {
+        let result = parse_env_var("KEY=value");
+        assert!(result.is_ok());
+        let (key, value) = result.unwrap();
+        assert_eq!(key, "KEY");
+        assert_eq!(value, "value");
+    }
+
+    #[test]
+    fn test_parse_env_var_with_equals_in_value() {
+        let result = parse_env_var("URL=https://api.example.com/v1?key=value");
+        assert!(result.is_ok());
+        let (key, value) = result.unwrap();
+        assert_eq!(key, "URL");
+        assert_eq!(value, "https://api.example.com/v1?key=value");
+    }
+
+    #[test]
+    fn test_parse_env_var_empty_value() {
+        let result = parse_env_var("EMPTY=");
+        assert!(result.is_ok());
+        let (key, value) = result.unwrap();
+        assert_eq!(key, "EMPTY");
+        assert_eq!(value, "");
+    }
+
+    #[test]
+    fn test_parse_env_var_invalid_no_equals() {
+        let result = parse_env_var("INVALID");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid format"));
+    }
+
+    #[test]
+    fn test_parse_env_var_invalid_empty() {
+        let result = parse_env_var("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid format"));
+    }
+
+    #[test]
+    fn test_parse_env_var_only_equals() {
+        let result = parse_env_var("=");
+        assert!(result.is_ok());
+        let (key, value) = result.unwrap();
+        assert_eq!(key, "");
+        assert_eq!(value, "");
+    }
+}
