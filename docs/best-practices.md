@@ -1,507 +1,658 @@
-# Best Practices Guide
+# EnvSwitch Best Practices
 
-This guide covers best practices for using EnvSwitch effectively and securely.
+This document outlines recommended practices for using EnvSwitch effectively and securely.
+
+## Table of Contents
+
+- [Configuration Management](#configuration-management)
+- [Security Best Practices](#security-best-practices)
+- [Import/Export Guidelines](#importexport-guidelines)
+- [Shell Integration](#shell-integration)
+- [Backup and Recovery](#backup-and-recovery)
+- [Performance Optimization](#performance-optimization)
+- [Team Collaboration](#team-collaboration)
+- [Troubleshooting](#troubleshooting)
 
 ## Configuration Management
 
 ### Naming Conventions
 
-Use clear, hierarchical naming conventions for your configurations:
+**Use descriptive, consistent names:**
 
 ```bash
-# Good: Descriptive and hierarchical
-envswitch set ai-claude-sonnet-coding
-envswitch set ai-openai-gpt4-analysis
-envswitch set db-postgres-dev
-envswitch set api-rest-v1-staging
+# ✅ Good - Clear and descriptive
+envswitch set myapp-prod-us-east
+envswitch set myapp-staging-eu-west
+envswitch set myapp-dev-local
 
-# Avoid: Vague or confusing names
+# ❌ Avoid - Ambiguous names
+envswitch set prod
 envswitch set config1
 envswitch set temp
-envswitch set test123
 ```
 
-### Organization Strategies
+**Follow a naming pattern:**
 
-#### By Environment
 ```bash
-envswitch set dev-database
-envswitch set staging-database
-envswitch set prod-database
+# Pattern: {project}-{environment}-{region/purpose}
+envswitch set ecommerce-prod-us-east
+envswitch set ecommerce-staging-eu-west
+envswitch set ecommerce-dev-local
+
+# Pattern: {service}-{environment}
+envswitch set api-prod
+envswitch set api-staging
+envswitch set api-dev
 ```
 
-#### By Service
+### Configuration Organization
+
+**Group related configurations:**
+
 ```bash
-envswitch set user-service-dev
-envswitch set order-service-dev
-envswitch set payment-service-dev
+# AI/ML configurations
+envswitch set ai-openai-gpt4
+envswitch set ai-claude-sonnet
+envswitch set ai-deepseek
+
+# Database configurations
+envswitch set db-prod-primary
+envswitch set db-prod-replica
+envswitch set db-staging
 ```
 
-#### By Purpose
+**Use descriptions effectively:**
+
 ```bash
-envswitch set ai-coding-assistant
-envswitch set ai-content-generation
-envswitch set ai-data-analysis
+# ✅ Good - Informative descriptions
+envswitch set prod-api \
+  -e API_URL=https://api.example.com \
+  -d "Production API configuration - US East region"
+
+# ✅ Good - Include important notes
+envswitch set staging-db \
+  -e DATABASE_URL=postgresql://staging:5432/app \
+  -d "Staging database - shared with QA team, reset weekly"
 ```
 
-### Configuration Descriptions
+### Variable Management
 
-Always add descriptions to your configurations:
+**Use consistent variable naming:**
 
 ```bash
-envswitch set claude-coding \
-  -e ANTHROPIC_API_KEY=sk-ant-your-key \
-  -e ANTHROPIC_MODEL=claude-3-5-sonnet-20241022 \
-  --description "Claude 3.5 Sonnet optimized for coding tasks with system prompts"
+# ✅ Good - Consistent naming
+envswitch set myapp \
+  -e DATABASE_URL=postgresql://... \
+  -e REDIS_URL=redis://... \
+  -e API_BASE_URL=https://...
+
+# ❌ Avoid - Inconsistent naming
+envswitch set myapp \
+  -e DB_CONNECTION=postgresql://... \
+  -e redis_host=redis://... \
+  -e api-endpoint=https://...
+```
+
+**Group related variables:**
+
+```bash
+# Database variables together
+envswitch set myapp \
+  -e DATABASE_URL=postgresql://localhost:5432/myapp \
+  -e DATABASE_POOL_SIZE=10 \
+  -e DATABASE_TIMEOUT=30 \
+  -e REDIS_URL=redis://localhost:6379 \
+  -e REDIS_POOL_SIZE=5
 ```
 
 ## Security Best Practices
 
-### Sensitive Information Handling
+### Sensitive Data Handling
 
-**DO NOT** hardcode sensitive values directly:
+**Never store secrets in plain text exports:**
 
 ```bash
-# ❌ Bad: Hardcoded secrets
-envswitch set prod-api \
-  -e API_KEY=sk-1234567890abcdef \
-  -e DATABASE_PASSWORD=supersecret123
+# ✅ Good - Export non-sensitive configs only
+envswitch export -c "dev,staging" -o safe-configs.json
+
+# ❌ Avoid - Exporting production secrets
+envswitch export -o all-configs.json  # May include prod secrets
 ```
 
-**DO** reference environment variables or use secure storage:
+**Use environment-specific secret management:**
 
 ```bash
-# ✅ Good: Reference existing environment variables
-envswitch set prod-api \
-  -e API_KEY="$PROD_API_KEY" \
-  -e DATABASE_PASSWORD="$PROD_DB_PASSWORD"
+# ✅ Good - Reference external secret management
+envswitch set prod \
+  -e SECRET_KEY_PATH=/vault/secrets/app-key \
+  -e DATABASE_URL_SECRET=vault:database-url \
+  -d "Production - secrets managed by Vault"
 
-# ✅ Good: Use placeholders and update separately
-envswitch set prod-api \
-  -e API_KEY=REPLACE_WITH_ACTUAL_KEY \
-  -e DATABASE_PASSWORD=REPLACE_WITH_ACTUAL_PASSWORD
+# ❌ Avoid - Hardcoded secrets
+envswitch set prod \
+  -e SECRET_KEY=actual-secret-value \
+  -e DATABASE_PASSWORD=plaintext-password
 ```
 
-### File Permissions
+### Access Control
 
-Ensure your configuration files have appropriate permissions:
+**Protect configuration files:**
 
 ```bash
-# Check current permissions
-ls -la ~/.config/envswitch/
-
-# Set restrictive permissions if needed
+# Set appropriate permissions
 chmod 600 ~/.config/envswitch/config.json
 chmod 700 ~/.config/envswitch/
+
+# Regular permission audit
+ls -la ~/.config/envswitch/
 ```
 
-### Backup Security
-
-When creating backups, be mindful of sensitive data:
+**Use separate configurations for different security levels:**
 
 ```bash
-# Create backups in secure locations
-envswitch export -o ~/secure-backups/envswitch-$(date +%Y%m%d).json
+# Separate sensitive and non-sensitive configs
+envswitch set app-config-public \
+  -e API_URL=https://api.example.com \
+  -e TIMEOUT=30 \
+  -d "Public configuration - safe to share"
 
-# Set appropriate permissions on backup files
-chmod 600 ~/secure-backups/envswitch-*.json
+envswitch set app-config-secrets \
+  -e API_KEY=secret-key \
+  -e DATABASE_PASSWORD=secret-pass \
+  -d "SENSITIVE: Contains secrets"
+```
+
+### Audit and Monitoring
+
+**Regular configuration audits:**
+
+```bash
+# List all configurations with metadata
+envswitch list --verbose
+
+# Check for potentially sensitive configurations
+envswitch list | grep -E "(prod|secret|key|token)"
+
+# Review configuration descriptions
+envswitch show myconfig
+```
+
+**Document sensitive configurations:**
+
+```bash
+# ✅ Good - Clear sensitivity marking
+envswitch set prod-secrets \
+  -e SECRET_KEY=... \
+  -d "⚠️ SENSITIVE: Production secrets - restricted access"
+
+# ✅ Good - Include access information
+envswitch set db-prod \
+  -e DATABASE_URL=... \
+  -d "Production DB - Access: DevOps team only"
+```
+
+## Import/Export Guidelines
+
+### Export Best Practices
+
+**Always use metadata for important exports:**
+
+```bash
+# ✅ Good - Include metadata and pretty formatting
+envswitch export -o backup.json --metadata --pretty
+
+# ✅ Good - Specific exports with context
+envswitch export -c "dev,staging" -o dev-configs.json --metadata
+```
+
+**Use appropriate formats:**
+
+```bash
+# JSON for full metadata and complex structures
+envswitch export -o configs.json --format json --metadata
+
+# ENV for simple variable sharing
+envswitch export -o simple.env --format env
+
+# YAML for human-readable configs
+envswitch export -o readable.yaml --format yaml
+```
+
+### Import Best Practices
+
+**Always preview imports first:**
+
+```bash
+# ✅ Good - Preview before importing
+envswitch import configs.json --dry-run
+envswitch import configs.json --backup --verbose
+```
+
+**Use appropriate conflict resolution:**
+
+```bash
+# For updates to existing configs
+envswitch import configs.json --merge --backup
+
+# For complete replacement
+envswitch import configs.json --force --backup
+
+# For new environments
+envswitch import configs.json  # Default behavior
+```
+
+**Validate imports:**
+
+```bash
+# After importing, verify configurations
+envswitch list --verbose
+envswitch status
+
+# Test critical configurations
+envswitch use prod --dry-run
 ```
 
 ## Shell Integration
 
-### Recommended Aliases
+### Shell-Specific Setup
 
-Create convenient aliases for common operations:
+**Zsh configuration (~/.zshrc):**
 
 ```bash
-# ~/.zshrc or ~/.bashrc
-alias envs='envswitch list'
-alias envstatus='envswitch status'
-alias envbackup='envswitch export -o ~/backups/envswitch-$(date +%Y%m%d).json'
+# EnvSwitch aliases
+alias es='envswitch'
+alias esl='envswitch list'
+alias ess='envswitch status'
+alias esu='envswitch use'
 
-# Quick switching aliases
-alias use-dev='eval "$(envswitch use dev)"'
-alias use-staging='eval "$(envswitch use staging)"'
-alias use-prod='eval "$(envswitch use prod)"'
+# Quick switching functions
+switch-to() {
+  if [[ -z "$1" ]]; then
+    echo "Usage: switch-to <config-name>"
+    envswitch list
+    return 1
+  fi
+  eval "$(envswitch use $1)"
+}
+
+# Auto-completion (if available)
+# eval "$(envswitch completion zsh)"
 ```
 
-### Shell Functions
+**Fish configuration (~/.config/fish/config.fish):**
 
-Create functions for complex operations:
+```fish
+# EnvSwitch aliases
+alias es='envswitch'
+alias esl='envswitch list'
+alias ess='envswitch status'
 
-```bash
-# Switch and show status
-switch_env() {
-    if [ -z "$1" ]; then
-        echo "Usage: switch_env <config_name>"
+# Quick switching function
+function switch-to
+    if test (count $argv) -eq 0
+        echo "Usage: switch-to <config-name>"
         envswitch list
         return 1
-    fi
-    
-    eval "$(envswitch use $1)"
-    if [ $? -eq 0 ]; then
-        echo "✅ Switched to: $1"
-        envswitch status
-    else
-        echo "❌ Failed to switch to: $1"
-    fi
-}
-
-# Quick AI model switching
-ai_model() {
-    case "$1" in
-        "claude"|"c")
-            eval "$(envswitch use claude-sonnet)"
-            ;;
-        "gpt"|"g")
-            eval "$(envswitch use gpt4-turbo)"
-            ;;
-        "local"|"l")
-            eval "$(envswitch use ollama)"
-            ;;
-        *)
-            echo "Available models: claude (c), gpt (g), local (l)"
-            ;;
-    esac
-}
+    end
+    eval (envswitch use $argv[1])
+end
 ```
 
-## Workflow Integration
-
-### Development Workflow
-
-Integrate EnvSwitch into your development workflow:
+**Bash configuration (~/.bashrc):**
 
 ```bash
-# Start of day setup
-start_dev() {
-    eval "$(envswitch use dev-database)"
-    eval "$(envswitch use dev-api)"
-    echo "🚀 Development environment ready"
-    envswitch status
-}
+# EnvSwitch aliases
+alias es='envswitch'
+alias esl='envswitch list'
+alias ess='envswitch status'
 
-# Pre-deployment checks
-pre_deploy() {
-    eval "$(envswitch use staging)"
-    echo "🧪 Running pre-deployment tests..."
-    npm test
-    if [ $? -eq 0 ]; then
-        echo "✅ Tests passed, ready for production"
-        eval "$(envswitch use prod)"
-    else
-        echo "❌ Tests failed, staying in staging"
-    fi
+# Quick switching function
+switch-to() {
+  if [[ -z "$1" ]]; then
+    echo "Usage: switch-to <config-name>"
+    envswitch list
+    return 1
+  fi
+  eval "$(envswitch use $1)"
 }
 ```
 
-### CI/CD Integration
+### Environment Validation
 
-Use EnvSwitch in your CI/CD pipelines:
-
-```yaml
-# .github/workflows/deploy.yml
-- name: Setup Environment
-  run: |
-    eval "$(envswitch use ci-testing)"
-    npm test
-
-- name: Deploy to Staging
-  run: |
-    eval "$(envswitch use staging-deploy)"
-    ./deploy.sh staging
-
-- name: Deploy to Production
-  if: github.ref == 'refs/heads/main'
-  run: |
-    eval "$(envswitch use prod-deploy)"
-    ./deploy.sh production
-```
-
-## Configuration Validation
-
-### Testing Configurations
-
-Always test new configurations:
+**Create validation functions:**
 
 ```bash
-# Create and test a new configuration
-envswitch set new-config -e TEST_VAR=test_value
-eval "$(envswitch use new-config)"
-
-# Verify the environment variable is set
-if [ "$TEST_VAR" = "test_value" ]; then
-    echo "✅ Configuration working correctly"
-else
-    echo "❌ Configuration failed"
-fi
-```
-
-### Validation Scripts
-
-Create validation scripts for critical configurations:
-
-```bash
-#!/bin/bash
-# validate-ai-config.sh
-
-validate_ai_config() {
-    local config_name=$1
-    
-    eval "$(envswitch use $config_name)"
-    
-    # Check required variables
-    if [ -z "$ANTHROPIC_API_KEY" ]; then
-        echo "❌ Missing ANTHROPIC_API_KEY"
-        return 1
+# Validate required environment variables
+validate-env() {
+  local required_vars=("DATABASE_URL" "API_KEY" "REDIS_URL")
+  local missing_vars=()
+  
+  for var in "${required_vars[@]}"; do
+    if [[ -z "${!var}" ]]; then
+      missing_vars+=("$var")
     fi
-    
-    if [ -z "$ANTHROPIC_MODEL" ]; then
-        echo "❌ Missing ANTHROPIC_MODEL"
-        return 1
-    fi
-    
-    # Test API connectivity (optional)
-    curl -s -H "Authorization: Bearer $ANTHROPIC_API_KEY" \
-         "$ANTHROPIC_BASE_URL/v1/models" > /dev/null
-    
-    if [ $? -eq 0 ]; then
-        echo "✅ $config_name configuration is valid"
-    else
-        echo "⚠️  $config_name configuration may have issues"
-    fi
+  done
+  
+  if [[ ${#missing_vars[@]} -gt 0 ]]; then
+    echo "❌ Missing required environment variables:"
+    printf '  %s\n' "${missing_vars[@]}"
+    return 1
+  else
+    echo "✅ All required environment variables are set"
+    return 0
+  fi
 }
 
-# Usage: ./validate-ai-config.sh claude-sonnet
-validate_ai_config "$1"
+# Use after switching configurations
+switch-and-validate() {
+  eval "$(envswitch use $1)" && validate-env
+}
 ```
 
 ## Backup and Recovery
 
-### Regular Backups
+### Automated Backups
 
-Set up automated backups:
+**Daily backup script:**
 
 ```bash
-# Add to crontab (crontab -e)
-# Daily backup at 2 AM
-0 2 * * * /usr/local/bin/envswitch export -o ~/backups/envswitch-$(date +\%Y\%m\%d).json
+#!/bin/bash
+# ~/.local/bin/envswitch-backup.sh
 
-# Weekly cleanup (keep only last 4 weeks)
-0 3 * * 0 find ~/backups -name "envswitch-*.json" -mtime +28 -delete
+BACKUP_DIR="$HOME/.config/envswitch/backups"
+DATE=$(date +%Y%m%d)
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+
+# Create daily backup
+envswitch export -o "$BACKUP_DIR/daily-backup-$DATE.json" --metadata --pretty
+
+# Create timestamped backup for important changes
+if [[ "$1" == "--important" ]]; then
+  envswitch export -o "$BACKUP_DIR/important-backup-$TIMESTAMP.json" --metadata --pretty
+  echo "Important backup created: important-backup-$TIMESTAMP.json"
+fi
+
+# Clean up old backups (keep last 30 days)
+find "$BACKUP_DIR" -name "daily-backup-*.json" -mtime +30 -delete
+
+echo "Daily backup completed: daily-backup-$DATE.json"
+```
+
+**Weekly backup with rotation:**
+
+```bash
+#!/bin/bash
+# Weekly backup script
+
+BACKUP_DIR="$HOME/.config/envswitch/backups/weekly"
+WEEK=$(date +%Y-W%U)
+
+mkdir -p "$BACKUP_DIR"
+
+# Create weekly backup
+envswitch export -o "$BACKUP_DIR/weekly-backup-$WEEK.json" --metadata --pretty
+
+# Keep only last 12 weeks
+find "$BACKUP_DIR" -name "weekly-backup-*.json" -mtime +84 -delete
+
+echo "Weekly backup completed: weekly-backup-$WEEK.json"
 ```
 
 ### Recovery Procedures
 
-Document recovery procedures:
+**Standard recovery process:**
 
 ```bash
-# Recovery script
-#!/bin/bash
-# recover-envswitch.sh
+# 1. Assess the situation
+envswitch list --verbose
+envswitch status
 
-BACKUP_DIR="$HOME/backups"
-LATEST_BACKUP=$(ls -t $BACKUP_DIR/envswitch-*.json | head -1)
+# 2. Create emergency backup of current state
+envswitch export -o "emergency-backup-$(date +%Y%m%d-%H%M%S).json" --metadata
 
-if [ -f "$LATEST_BACKUP" ]; then
-    echo "Restoring from: $LATEST_BACKUP"
-    envswitch import "$LATEST_BACKUP" --merge
-    echo "✅ Recovery complete"
-else
-    echo "❌ No backup found in $BACKUP_DIR"
-    exit 1
-fi
+# 3. Restore from backup
+envswitch import backup-file.json --backup --verbose
+
+# 4. Verify recovery
+envswitch list --verbose
+envswitch status
+```
+
+**Selective recovery:**
+
+```bash
+# Preview what would be restored
+envswitch import backup.json --dry-run
+
+# Restore only specific configurations
+# (Extract specific configs from backup first)
+envswitch import partial-backup.json --merge --backup
 ```
 
 ## Performance Optimization
 
-### Configuration Size
+### Large Configuration Management
 
-Keep configurations focused and avoid unnecessary variables:
+**Optimize exports:**
 
 ```bash
-# ✅ Good: Focused configuration
-envswitch set api-dev \
-  -e API_URL=http://localhost:3000 \
-  -e API_KEY=dev-key \
-  -e DEBUG=true
+# ✅ Good - Export only needed configurations
+envswitch export -c "config1,config2" -o subset.json
 
-# ❌ Avoid: Bloated configuration with unused variables
-envswitch set api-dev \
-  -e API_URL=http://localhost:3000 \
-  -e API_KEY=dev-key \
-  -e DEBUG=true \
-  -e UNUSED_VAR1=value1 \
-  -e UNUSED_VAR2=value2 \
-  # ... many more unused variables
+# ✅ Good - Use compact format for large exports
+envswitch export -o configs.json  # Without --pretty for speed
+
+# ❌ Avoid - Exporting everything with pretty formatting
+envswitch export -o all.json --pretty --metadata  # Slow for many configs
 ```
 
-### Shell Performance
-
-Use efficient shell integration:
+**Batch operations:**
 
 ```bash
-# ✅ Good: Direct evaluation
-eval "$(envswitch use config-name)"
+# Process configurations in batches
+configs=($(envswitch list))
+batch_size=10
 
-# ❌ Avoid: Unnecessary subshells or pipes
-envswitch use config-name | bash
+for ((i=0; i<${#configs[@]}; i+=batch_size)); do
+  batch=("${configs[@]:i:batch_size}")
+  echo "Processing batch: ${batch[*]}"
+  # Process batch...
+done
+```
+
+### Storage Optimization
+
+**Regular cleanup:**
+
+```bash
+# Remove unused configurations
+envswitch list | while read config; do
+  echo "Last used: $config"
+  # Add logic to check usage and remove old configs
+done
+
+# Clean up backup files
+find ~/.config/envswitch/backups -name "*.json" -mtime +90 -delete
 ```
 
 ## Team Collaboration
 
 ### Shared Configurations
 
-Create shared configuration templates:
+**Create team configuration templates:**
 
 ```bash
-# team-configs.json template
-{
-  "configs": {
-    "dev-template": {
-      "variables": {
-        "DATABASE_URL": "postgresql://localhost:5432/myapp_dev",
-        "API_URL": "http://localhost:3000",
-        "DEBUG": "true"
-      },
-      "description": "Development environment template"
-    }
-  }
-}
+# Template for new team members
+envswitch export -c "dev-template,staging-template" -o team-template.json --metadata
+
+# Document the template
+echo "Team Configuration Template" > team-template.md
+echo "Import with: envswitch import team-template.json --merge" >> team-template.md
 ```
 
-### Documentation
-
-Document your team's configurations:
-
-```markdown
-# Team Environment Configurations
-
-## Available Configurations
-
-- `dev-database`: Local development database
-- `staging-api`: Staging API environment  
-- `prod-readonly`: Production read-only access
-
-## Usage
+**Environment standardization:**
 
 ```bash
-# Start development
-eval "$(envswitch use dev-database)"
+# Standard development environment
+envswitch set dev-standard \
+  -e NODE_ENV=development \
+  -e DEBUG=true \
+  -e LOG_LEVEL=debug \
+  -e DATABASE_URL=postgresql://localhost:5432/app_dev \
+  -d "Standard development environment for team"
 
-# Deploy to staging
-eval "$(envswitch use staging-api)"
+# Export for team sharing
+envswitch export -c "dev-standard" -o dev-standard.json --metadata
 ```
 
-## Adding New Configurations
+### Documentation Standards
 
-1. Create the configuration: `envswitch set new-config ...`
-2. Test thoroughly
-3. Add to team documentation
-4. Share via export/import
-```
-
-### Version Control
-
-Consider version controlling your configurations (without secrets):
+**Configuration documentation:**
 
 ```bash
-# Export configurations without sensitive data
-envswitch export -o team-configs-template.json
+# ✅ Good - Comprehensive description
+envswitch set api-prod \
+  -e API_URL=https://api.example.com \
+  -e TIMEOUT=30 \
+  -d "Production API config - US East, load balanced, 99.9% SLA"
 
-# Add to version control
-git add team-configs-template.json
-git commit -m "Add team configuration templates"
+# ✅ Good - Include contact information
+envswitch set db-prod \
+  -e DATABASE_URL=postgresql://... \
+  -d "Production DB - Contact: devops@company.com for access"
+```
+
+**Change management:**
+
+```bash
+# Before making changes, create backup
+envswitch export -o "before-changes-$(date +%Y%m%d).json" --metadata
+
+# Document changes
+envswitch edit prod-config
+# Add note in description about what changed and why
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
 
 **Configuration not found:**
-```bash
-# List available configurations
-envswitch list
 
-# Check for typos in configuration name
-envswitch show config-name
+```bash
+# Check for typos
+envswitch list | grep -i "partial-name"
+
+# Use tab completion if available
+envswitch use <TAB>
+
+# Check similar names
+envswitch list | sort
 ```
 
-**Environment variables not set:**
-```bash
-# Verify the switch command worked
-eval "$(envswitch use config-name)"
-echo $?  # Should be 0 for success
+**Import/export failures:**
 
-# Check current environment
-envswitch status
+```bash
+# Validate file format
+file config-file.json
+python -m json.tool config-file.json > /dev/null
+
+# Check file permissions
+ls -la config-file.json
+
+# Use verbose mode for debugging
+envswitch import config-file.json --dry-run --verbose
 ```
 
 **Shell integration issues:**
+
 ```bash
-# Verify shell type
+# Check shell type
 echo $SHELL
 
 # Test command generation
-envswitch use config-name  # Don't use eval to see raw output
+envswitch use config --dry-run
+
+# Check for shell-specific syntax
+if [[ "$SHELL" == *"fish"* ]]; then
+  eval (envswitch use config)
+else
+  eval "$(envswitch use config)"
+fi
 ```
 
-### Debugging
+### Debugging Techniques
 
-Enable verbose output for troubleshooting:
+**Enable verbose output:**
 
 ```bash
-# Check configuration details
-envswitch show config-name
-
-# Verify file permissions
-ls -la ~/.config/envswitch/
-
-# Test with a simple configuration
-envswitch set debug-test -e TEST_VAR=debug_value
-eval "$(envswitch use debug-test)"
-echo "TEST_VAR is: $TEST_VAR"
+# For all operations
+envswitch --verbose list
+envswitch --verbose use config
+envswitch --verbose import file.json
 ```
 
-## Maintenance
-
-### Regular Maintenance Tasks
-
-1. **Review configurations monthly:**
-   ```bash
-   envswitch list
-   # Remove unused configurations
-   envswitch delete unused-config
-   ```
-
-2. **Update descriptions:**
-   ```bash
-   envswitch edit config-name  # Add or update descriptions
-   ```
-
-3. **Backup configurations:**
-   ```bash
-   envswitch export -o monthly-backup-$(date +%Y%m).json
-   ```
-
-4. **Validate critical configurations:**
-   ```bash
-   ./validate-configs.sh
-   ```
-
-### Cleanup
-
-Remove old or unused configurations:
+**Check configuration integrity:**
 
 ```bash
-# List all configurations with details
+# Verify configuration file
+cat ~/.config/envswitch/config.json | python -m json.tool
+
+# Check for corruption
 envswitch list --verbose
-
-# Remove unused configurations
-envswitch delete old-config-1 old-config-2
-
-# Clean up backup files
-find ~/backups -name "envswitch-*.json" -mtime +90 -delete
 ```
 
-Following these best practices will help you use EnvSwitch effectively, securely, and maintainably in your development workflow.
+**Performance debugging:**
+
+```bash
+# Time operations
+time envswitch export -o large-export.json
+time envswitch import large-export.json --dry-run
+
+# Check file sizes
+ls -lh ~/.config/envswitch/
+du -h ~/.config/envswitch/backups/
+```
+
+### Recovery from Common Problems
+
+**Corrupted configuration file:**
+
+```bash
+# Backup current state
+cp ~/.config/envswitch/config.json ~/.config/envswitch/config.json.corrupted
+
+# Restore from backup
+envswitch import latest-backup.json --force
+
+# Or start fresh if no backup
+rm ~/.config/envswitch/config.json
+envswitch list  # Will create new empty config
+```
+
+**Lost configurations:**
+
+```bash
+# Check for backup files
+ls -la ~/.config/envswitch/backups/
+
+# Restore from most recent backup
+envswitch import ~/.config/envswitch/backups/latest-backup.json --merge
+
+# Check system backups (Time Machine, etc.)
+```
+
+**Permission issues:**
+
+```bash
+# Fix permissions
+chmod 700 ~/.config/envswitch/
+chmod 600 ~/.config/envswitch/config.json
+
+# Check ownership
+ls -la ~/.config/envswitch/
+chown -R $USER:$USER ~/.config/envswitch/
+```

@@ -74,54 +74,94 @@ pub enum Commands {
         mismatched: bool,
     },
     /// Edit a configuration interactively
+    /// 
+    /// Opens an interactive editor to modify environment variables.
+    /// Allows adding, editing, and removing variables with real-time validation.
+    /// 
+    /// Example:
+    ///   envswitch edit my-config
     Edit {
         /// Configuration alias to edit
+        /// Creates a new configuration if it doesn't exist
         alias: String,
     },
     /// Delete a configuration
+    /// 
+    /// Removes a configuration permanently. Shows interactive confirmation
+    /// unless --force is used. Cannot delete the currently active configuration.
+    /// 
+    /// Examples:
+    ///   envswitch delete old-config
+    ///   envswitch delete temp-config --force
     #[command(alias = "rm")]
     Delete {
         /// Configuration alias to delete
         alias: String,
-        /// Skip confirmation prompt
+        /// Skip confirmation prompt and delete immediately
+        /// Use with caution as this action cannot be undone
         #[arg(short, long)]
         force: bool,
+        /// Show verbose output during deletion
+        #[arg(short, long)]
+        verbose: bool,
     },
     /// Export configurations to a file
+    /// 
+    /// Examples:
+    ///   envswitch export --output my-configs.json
+    ///   envswitch export --configs dev,prod --format env --output configs.env
+    ///   envswitch export --metadata --pretty --output detailed-configs.json
     Export {
         /// Output file path (default: envswitch_export.json)
+        /// Supports .json, .env, and .yaml extensions for format detection
         #[arg(short, long)]
         output: Option<String>,
-        /// Export only specific configurations
+        /// Export only specific configurations (comma-separated)
+        /// Example: --configs dev,staging,prod
         #[arg(short, long, value_delimiter = ',')]
         configs: Vec<String>,
-        /// Export format (json, env, yaml)
+        /// Export format: json (default), env, or yaml
+        /// Format is auto-detected from file extension if not specified
         #[arg(short, long, default_value = "json")]
         format: String,
-        /// Include metadata (timestamps, descriptions)
+        /// Include metadata such as creation timestamps and descriptions
         #[arg(short, long)]
         metadata: bool,
-        /// Pretty print output
+        /// Pretty print JSON output for better readability
         #[arg(short, long)]
         pretty: bool,
     },
     /// Import configurations from a file
+    /// 
+    /// Supports JSON, ENV, and YAML formats with automatic format detection.
+    /// Creates automatic backups when --backup is used.
+    /// 
+    /// Examples:
+    ///   envswitch import configs.json
+    ///   envswitch import --backup --merge team-configs.json
+    ///   envswitch import --dry-run --verbose new-configs.yaml
     Import {
-        /// Input file path
+        /// Input file path (supports .json, .env, .yaml formats)
+        /// Format is automatically detected from file content and extension
         file: String,
-        /// Overwrite existing configurations
+        /// Overwrite existing configurations without confirmation
+        /// Use with caution as this will replace existing configs
         #[arg(short, long)]
         force: bool,
-        /// Merge with existing configurations
+        /// Merge with existing configurations instead of replacing
+        /// Combines variables from imported and existing configs
         #[arg(short, long)]
         merge: bool,
-        /// Show what would be imported (dry run)
+        /// Preview import changes without actually importing (dry run)
+        /// Shows what configurations would be created or modified
         #[arg(short, long)]
         dry_run: bool,
-        /// Skip validation of imported configurations
+        /// Skip validation of imported configurations for faster import
+        /// Only recommended for trusted configuration files
         #[arg(short, long)]
         skip_validation: bool,
-        /// Backup existing configurations before import
+        /// Create backup of existing configurations before import
+        /// Backup is saved to ~/.config/envswitch/backups/
         #[arg(short, long)]
         backup: bool,
     },

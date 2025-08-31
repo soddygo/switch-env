@@ -4,3 +4,6 @@ pub mod env;
 pub mod shell;
 pub mod error;
 pub mod types;
+pub mod commands;
+pub mod handlers;
+pub mod utils;

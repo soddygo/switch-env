@@ -134,14 +134,35 @@ envswitch clear
 ### Import/Export
 
 ```bash
-# Export configurations to a file
+# Export all configurations to JSON (default format)
 envswitch export -o configs.json
+
+# Export with metadata and pretty formatting
+envswitch export -o configs.json --metadata --pretty
+
+# Export specific configurations
+envswitch export -c deepseek,kimi -o my-ai-configs.json
+
+# Export in different formats
+envswitch export -o configs.env --format env
+envswitch export -o configs.yaml --format yaml
 
 # Import configurations from a file
 envswitch import configs.json
 
-# Export specific configurations
-envswitch export -c deepseek,kimi -o my-ai-configs.json
+# Import with backup (creates backup before importing)
+envswitch import configs.json --backup
+
+# Import with conflict resolution
+envswitch import configs.json --force    # Overwrite existing
+envswitch import configs.json --merge    # Merge with existing
+
+# Preview import without making changes
+envswitch import configs.json --dry-run
+
+# Import from different formats (auto-detected)
+envswitch import configs.env
+envswitch import configs.yaml
 ```
 
 ## Configuration Examples
@@ -192,10 +213,47 @@ envswitch set staging \
 
 ```bash
 # Create a backup of all configurations
-envswitch export -o backup-$(date +%Y%m%d).json
+envswitch export -o backup-$(date +%Y%m%d).json --metadata --pretty
 
-# Restore from backup
-envswitch import backup-20241201.json --merge
+# Restore from backup with merge
+envswitch import backup-20241201.json --merge --backup
+
+# Force restore (overwrites existing configurations)
+envswitch import backup-20241201.json --force
+
+# Preview what would be restored
+envswitch import backup-20241201.json --dry-run
+```
+
+### Interactive Configuration Editing
+
+```bash
+# Edit a configuration interactively
+envswitch edit myconfig
+
+# The interactive editor allows you to:
+# - Add new environment variables
+# - Edit existing variables
+# - Delete variables
+# - Update configuration description
+# - Save or cancel changes
+```
+
+### Advanced Export/Import Options
+
+```bash
+# Export with verbose output
+envswitch export -o configs.json --verbose
+
+# Export only specific configurations with metadata
+envswitch export -c prod,staging -o prod-configs.json --metadata --pretty
+
+# Import with validation and backup
+envswitch import configs.json --backup --verbose
+
+# Cross-format conversion (export JSON, import as ENV)
+envswitch export -o temp.json --format json
+envswitch import temp.json  # Auto-detects JSON format
 ```
 
 ## Configuration File Location
@@ -211,6 +269,7 @@ Configurations are stored in:
 **Configuration not found**
 ```bash
 envswitch list  # Check available configurations
+# If you see suggestions, check for typos in the configuration name
 ```
 
 **Shell commands not working**
@@ -220,12 +279,49 @@ eval "$(envswitch use myconfig)"
 
 # Check your shell type
 echo $SHELL
+
+# For fish shell, use different syntax
+eval (envswitch use myconfig)
 ```
 
 **Permission errors**
 ```bash
 # Check configuration directory permissions
 ls -la ~/.config/envswitch/
+
+# Fix permissions if needed
+chmod 755 ~/.config/envswitch/
+chmod 644 ~/.config/envswitch/config.json
+```
+
+**Import/Export issues**
+```bash
+# Check file format and content
+envswitch import myfile.json --dry-run
+
+# Use verbose mode for detailed error information
+envswitch import myfile.json --verbose
+
+# For corrupted files, check the format
+file myfile.json  # Should show JSON data
+```
+
+**Interactive editing problems**
+```bash
+# If edit command doesn't work, check configuration exists
+envswitch list
+
+# Create new configuration if needed
+envswitch edit newconfig  # Will offer to create new one
+```
+
+**Large configuration performance**
+```bash
+# For large configurations, use specific exports
+envswitch export -c config1,config2 -o subset.json
+
+# Use non-pretty format for faster processing
+envswitch export -o configs.json  # Without --pretty flag
 ```
 
 ### Getting Help
@@ -258,6 +354,14 @@ cargo test
 cargo test --test integration_tests
 cargo test --test shell_compatibility_tests
 cargo test --test error_scenario_tests
+cargo test --test missing_features_tests
+cargo test --test command_workflow_tests
+
+# Run tests with output
+cargo test -- --nocapture
+
+# Run specific test
+cargo test test_export_import_workflow
 ```
 
 ### Project Structure

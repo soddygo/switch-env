@@ -25,8 +25,8 @@ pub fn run_command(command: Commands, verbose: bool) -> Result<(), Box<dyn Error
         Commands::Edit { alias } => {
             handle_edit_command(&config_manager, alias, verbose)?;
         }
-        Commands::Delete { alias, force } => {
-            handle_delete_command(&config_manager, alias, force, verbose)?;
+        Commands::Delete { alias, force, verbose: cmd_verbose } => {
+            handle_delete_command(&config_manager, alias, force, verbose || cmd_verbose)?;
         }
         Commands::Export { output, configs, format, metadata, pretty } => {
             handle_export_command(&config_manager, output, configs, format, metadata, pretty, verbose)?;

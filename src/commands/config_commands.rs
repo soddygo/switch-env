@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::{self, Write};
 use crate::config::{FileConfigManager, ConfigManager};
 use crate::env::{ShellEnvironmentManager, EnvironmentManager};
 use crate::handlers::interactive_env_input;
@@ -356,9 +357,311 @@ pub fn handle_edit_command(
     alias: String,
     verbose: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // This function will be moved from main.rs
-    // For now, return a placeholder
-    println!("Edit command - to be implemented");
+    if verbose {
+        println!("📝 Starting interactive edit for configuration '{}'...", alias);
+    }
+    
+    // Validate alias
+    if alias.trim().is_empty() {
+        return Err("Configuration name cannot be empty. Please specify which configuration to edit.".into());
+    }
+    
+    // Load existing configuration or offer to create new one
+    let mut config = match config_manager.get_config(&alias)? {
+        Some(config) => {
+            if verbose {
+                println!("📋 Loaded existing configuration '{}'", alias);
+            }
+            config
+        }
+        None => {
+            println!("Configuration '{}' not found.", alias);
+            print!("Would you like to create a new configuration with this name? [y/N]: ");
+            io::Write::flush(&mut io::stdout())?;
+            
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+            let input = input.trim().to_lowercase();
+            
+            if input != "y" && input != "yes" {
+                println!("❌ Edit cancelled.");
+                return Ok(());
+            }
+            
+            // Create new configuration
+            use crate::config::EnvConfig;
+            use std::collections::HashMap;
+            use chrono::Utc;
+            
+            EnvConfig {
+                alias: alias.clone(),
+                variables: HashMap::new(),
+                description: None,
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            }
+        }
+    };
+    
+    let original_variables = config.variables.clone();
+    let original_description = config.description.clone();
+    
+    println!();
+    println!("📝 Editing configuration: {}", config.alias);
+    if let Some(desc) = &config.description {
+        println!("   Description: {}", desc);
+    }
+    println!();
+    
+    loop {
+        // Display current variables
+        if config.variables.is_empty() {
+            println!("📋 Current variables: (none)");
+        } else {
+            println!("📋 Current variables:");
+            let mut sorted_vars: Vec<_> = config.variables.iter().collect();
+            sorted_vars.sort_by_key(|(k, _)| *k);
+            
+            for (i, (key, value)) in sorted_vars.iter().enumerate() {
+                let display_value = if is_sensitive_key(key) {
+                    mask_sensitive_value(value)
+                } else {
+                    value.to_string()
+                };
+                println!("   {}. {} = {}", i + 1, key, display_value);
+            }
+        }
+        
+        println!();
+        println!("Actions:");
+        println!("   [a]dd     - Add a new variable");
+        println!("   [e]dit    - Edit an existing variable");
+        println!("   [d]elete  - Delete a variable");
+        println!("   [desc]    - Edit description");
+        println!("   [s]ave    - Save changes and exit");
+        println!("   [q]uit    - Quit without saving");
+        println!();
+        print!("> ");
+        io::Write::flush(&mut io::stdout())?;
+        
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let input = input.trim().to_lowercase();
+        
+        match input.as_str() {
+            "a" | "add" => {
+                println!();
+                print!("Enter variable name: ");
+                io::Write::flush(&mut io::stdout())?;
+                
+                let mut key = String::new();
+                io::stdin().read_line(&mut key)?;
+                let key = key.trim().to_string();
+                
+                if key.is_empty() {
+                    println!("❌ Variable name cannot be empty.");
+                    continue;
+                }
+                
+                if config.variables.contains_key(&key) {
+                    println!("⚠️  Variable '{}' already exists. Use 'edit' to modify it.", key);
+                    continue;
+                }
+                
+                print!("Enter variable value: ");
+                io::Write::flush(&mut io::stdout())?;
+                
+                let mut value = String::new();
+                io::stdin().read_line(&mut value)?;
+                let value = value.trim().to_string();
+                
+                config.variables.insert(key.clone(), value);
+                println!("✅ Added variable '{}'", key);
+            }
+            
+            "e" | "edit" => {
+                if config.variables.is_empty() {
+                    println!("❌ No variables to edit. Use 'add' to create variables first.");
+                    continue;
+                }
+                
+                println!();
+                print!("Enter variable name to edit: ");
+                io::Write::flush(&mut io::stdout())?;
+                
+                let mut key = String::new();
+                io::stdin().read_line(&mut key)?;
+                let key = key.trim().to_string();
+                
+                if let Some(current_value) = config.variables.get(&key) {
+                    let display_value = if is_sensitive_key(&key) {
+                        mask_sensitive_value(current_value)
+                    } else {
+                        current_value.clone()
+                    };
+                    
+                    println!("Current value: {}", display_value);
+                    print!("Enter new value (or press Enter to keep current): ");
+                    io::Write::flush(&mut io::stdout())?;
+                    
+                    let mut value = String::new();
+                    io::stdin().read_line(&mut value)?;
+                    let value = value.trim();
+                    
+                    if !value.is_empty() {
+                        config.variables.insert(key.clone(), value.to_string());
+                        println!("✅ Updated variable '{}'", key);
+                    } else {
+                        println!("⏭️  Variable '{}' unchanged", key);
+                    }
+                } else {
+                    println!("❌ Variable '{}' not found.", key);
+                }
+            }
+            
+            "d" | "delete" => {
+                if config.variables.is_empty() {
+                    println!("❌ No variables to delete.");
+                    continue;
+                }
+                
+                println!();
+                print!("Enter variable name to delete: ");
+                io::Write::flush(&mut io::stdout())?;
+                
+                let mut key = String::new();
+                io::stdin().read_line(&mut key)?;
+                let key = key.trim().to_string();
+                
+                if config.variables.remove(&key).is_some() {
+                    println!("✅ Deleted variable '{}'", key);
+                } else {
+                    println!("❌ Variable '{}' not found.", key);
+                }
+            }
+            
+            "desc" | "description" => {
+                println!();
+                if let Some(current_desc) = &config.description {
+                    println!("Current description: {}", current_desc);
+                }
+                print!("Enter new description (or press Enter to clear): ");
+                io::Write::flush(&mut io::stdout())?;
+                
+                let mut desc = String::new();
+                io::stdin().read_line(&mut desc)?;
+                let desc = desc.trim();
+                
+                if desc.is_empty() {
+                    config.description = None;
+                    println!("✅ Description cleared");
+                } else {
+                    config.description = Some(desc.to_string());
+                    println!("✅ Description updated");
+                }
+            }
+            
+            "s" | "save" => {
+                // Validate configuration before saving
+                if config.variables.is_empty() {
+                    println!("⚠️  Configuration has no variables. Save anyway? [y/N]: ");
+                    io::Write::flush(&mut io::stdout())?;
+                    
+                    let mut confirm = String::new();
+                    io::stdin().read_line(&mut confirm)?;
+                    let confirm = confirm.trim().to_lowercase();
+                    
+                    if confirm != "y" && confirm != "yes" {
+                        println!("❌ Save cancelled. Add some variables first.");
+                        continue;
+                    }
+                }
+                
+                if verbose {
+                    println!("💾 Saving configuration...");
+                }
+                
+                // Update timestamp
+                config.updated_at = chrono::Utc::now();
+                
+                // Save the configuration - check if it's a new config or existing one
+                let existing_config = config_manager.get_config(&config.alias)?;
+                if existing_config.is_some() {
+                    // Update existing configuration
+                    config_manager.update_config(
+                        config.alias.clone(),
+                        config.variables.clone(),
+                        config.description.clone(),
+                    )?;
+                } else {
+                    // Create new configuration
+                    config_manager.create_config(
+                        config.alias.clone(),
+                        config.variables.clone(),
+                        config.description.clone(),
+                    )?;
+                }
+                
+                println!("✅ Configuration '{}' saved successfully!", config.alias);
+                
+                // Show summary of changes
+                let mut changes = Vec::new();
+                
+                // Check for added variables
+                for key in config.variables.keys() {
+                    if !original_variables.contains_key(key) {
+                        changes.push(format!("+ {}", key));
+                    }
+                }
+                
+                // Check for modified variables
+                for (key, value) in &config.variables {
+                    if let Some(original_value) = original_variables.get(key) {
+                        if original_value != value {
+                            changes.push(format!("~ {}", key));
+                        }
+                    }
+                }
+                
+                // Check for removed variables
+                for key in original_variables.keys() {
+                    if !config.variables.contains_key(key) {
+                        changes.push(format!("- {}", key));
+                    }
+                }
+                
+                // Check for description changes
+                if original_description != config.description {
+                    changes.push("~ description".to_string());
+                }
+                
+                if !changes.is_empty() {
+                    println!("📝 Changes made: {}", changes.join(", "));
+                } else {
+                    println!("📝 No changes made");
+                }
+                
+                println!("📊 Total variables: {}", config.variables.len());
+                break;
+            }
+            
+            "q" | "quit" => {
+                println!("❌ Edit cancelled. No changes saved.");
+                break;
+            }
+            
+            _ => {
+                println!("❌ Invalid option. Please choose from the available actions.");
+            }
+        }
+        
+        println!();
+    }
+    
+    if verbose {
+        println!("✅ Edit operation completed.");
+    }
+    
     Ok(())
 }
 
@@ -369,8 +672,123 @@ pub fn handle_delete_command(
     force: bool,
     verbose: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // This function will be moved from main.rs
-    // For now, return a placeholder
-    println!("Delete command - to be implemented");
+    if verbose {
+        println!("🗑️  Starting delete operation for configuration '{}'...", alias);
+    }
+    
+    // Validate alias
+    if alias.trim().is_empty() {
+        return Err("Configuration name cannot be empty. Please specify which configuration to delete.".into());
+    }
+    
+    // Check if configuration exists
+    let config = config_manager.get_config(&alias)?;
+    let config = match config {
+        Some(config) => config,
+        None => {
+            let available_configs = config_manager.list_configs()?;
+            if available_configs.is_empty() {
+                return Err("No configurations exist to delete.".into());
+            }
+            
+            // Find similar configuration names
+            let suggestions = find_similar_configs(&alias, &available_configs);
+            if suggestions.is_empty() {
+                return Err(format!(
+                    "Configuration '{}' not found.\nAvailable configurations: {}\n💡 Use 'envswitch list' to see all configurations",
+                    alias, available_configs.join(", ")
+                ).into());
+            } else {
+                return Err(format!(
+                    "Configuration '{}' not found.\nDid you mean: {}?\nAvailable configurations: {}",
+                    alias, suggestions.join(", "), available_configs.join(", ")
+                ).into());
+            }
+        }
+    };
+    
+    // Check if this is the active configuration
+    let active_config = config_manager.get_active_config()?;
+    let is_active = active_config.as_deref() == Some(&alias);
+    
+    if verbose {
+        println!("📋 Configuration details:");
+        println!("   Name: {}", config.alias);
+        println!("   Description: {}", config.description.as_deref().unwrap_or("No description"));
+        println!("   Variables: {}", config.variables.len());
+        println!("   Created: {}", config.created_at.format("%Y-%m-%d %H:%M:%S UTC"));
+        println!("   Updated: {}", config.updated_at.format("%Y-%m-%d %H:%M:%S UTC"));
+        if is_active {
+            println!("   Status: ⭐ Currently active");
+        }
+    }
+    
+    // Confirmation prompt unless force flag is used
+    if !force {
+        println!("⚠️  Delete configuration '{}'? This cannot be undone.", alias);
+        println!("   Variables: {} ({})", 
+            config.variables.len(),
+            config.variables.keys().take(3).cloned().collect::<Vec<_>>().join(", ")
+        );
+        if config.variables.len() > 3 {
+            println!("   ... and {} more", config.variables.len() - 3);
+        }
+        println!("   Created: {}", config.created_at.format("%Y-%m-%d %H:%M:%S UTC"));
+        
+        if is_active {
+            println!("   ⚠️  This is your currently active configuration!");
+            println!("   Deleting it will clear your active configuration.");
+        }
+        
+        println!();
+        print!("Continue? [y/N]: ");
+        std::io::Write::flush(&mut std::io::stdout())?;
+        
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        let input = input.trim().to_lowercase();
+        
+        if input != "y" && input != "yes" {
+            println!("❌ Deletion cancelled.");
+            return Ok(());
+        }
+    }
+    
+    if verbose {
+        println!("🗑️  Deleting configuration '{}'...", alias);
+    }
+    
+    // Perform the deletion
+    config_manager.delete_config(alias.clone())?;
+    
+    // Clear active configuration if we deleted the active one
+    if is_active {
+        if verbose {
+            println!("🔄 Clearing active configuration...");
+        }
+        config_manager.clear_active_config()?;
+    }
+    
+    // Success message
+    println!("✅ Configuration '{}' deleted successfully!", alias);
+    
+    if is_active {
+        println!("🔄 Active configuration cleared.");
+        println!("💡 Use 'envswitch use <config>' to activate another configuration.");
+    }
+    
+    // Show remaining configurations
+    let remaining_configs = config_manager.list_configs()?;
+    if remaining_configs.is_empty() {
+        println!("📭 No configurations remaining.");
+        println!("💡 Create a new configuration with: envswitch set <name> -e KEY=value");
+    } else {
+        println!("📋 Remaining configurations: {}", remaining_configs.join(", "));
+    }
+    
+    if verbose {
+        println!("✅ Delete operation completed successfully.");
+    }
+    
     Ok(())
 }
