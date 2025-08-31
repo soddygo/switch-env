@@ -259,6 +259,7 @@ envswitch import temp.json  # Auto-detects JSON format
 ## Configuration File Location
 
 Configurations are stored in:
+
 - **macOS/Linux**: `~/.config/envswitch/config.json`
 - **Windows**: `%APPDATA%\envswitch\config.json`
 
@@ -267,12 +268,14 @@ Configurations are stored in:
 ### Common Issues
 
 **Configuration not found**
+
 ```bash
 envswitch list  # Check available configurations
 # If you see suggestions, check for typos in the configuration name
 ```
 
 **Shell commands not working**
+
 ```bash
 # Make sure to use eval
 eval "$(envswitch use myconfig)"
@@ -285,6 +288,7 @@ eval (envswitch use myconfig)
 ```
 
 **Permission errors**
+
 ```bash
 # Check configuration directory permissions
 ls -la ~/.config/envswitch/
@@ -295,6 +299,7 @@ chmod 644 ~/.config/envswitch/config.json
 ```
 
 **Import/Export issues**
+
 ```bash
 # Check file format and content
 envswitch import myfile.json --dry-run
@@ -307,6 +312,7 @@ file myfile.json  # Should show JSON data
 ```
 
 **Interactive editing problems**
+
 ```bash
 # If edit command doesn't work, check configuration exists
 envswitch list
@@ -316,6 +322,7 @@ envswitch edit newconfig  # Will offer to create new one
 ```
 
 **Large configuration performance**
+
 ```bash
 # For large configurations, use specific exports
 envswitch export -c config1,config2 -o subset.json

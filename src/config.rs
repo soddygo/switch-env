@@ -348,10 +348,8 @@ impl FileConfigManager {
             .map_err(ConfigError::JsonError)?;
         store.validate()?;
         
-        // Create a backup of current config before restoring (if different from the backup we're restoring)
-        if self.config_file_exists() && backup_path != &self.config_paths.config_file {
-            let _current_backup = self.backup_config()?;
-        }
+        // Note: We don't automatically create a backup of the current config during restore
+        // The user should create their own backup if needed before calling restore
         
         // Copy backup to config file
         self.ensure_config_dir()?;
@@ -910,8 +908,9 @@ impl ConfigManager for FileConfigManager {
         store.clear_active();
         self.save_store(&store)
     }
-}#[cfg(test)
-]
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::HashMap;

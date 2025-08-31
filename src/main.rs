@@ -1,12 +1,13 @@
 mod cli;
 mod commands;
-mod config;
 mod env;
 mod error;
 mod handlers;
 pub mod shell;
 mod types;
 mod utils;
+
+use envswitch::config;
 
 use clap::Parser;
 use cli::Cli;

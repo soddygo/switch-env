@@ -1,0 +1,29 @@
+{
+  "configs": {
+    "development": {
+      "alias": "development",
+      "variables": {
+        "API_URL": "http://localhost:3000",
+        "DEBUG": "true",
+        "LOG_LEVEL": "debug"
+      },
+      "description": "Development environment configuration",
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    },
+    "production": {
+      "alias": "production",
+      "variables": {
+        "API_URL": "https://api.example.com",
+        "DEBUG": "false",
+        "LOG_LEVEL": "info"
+      },
+      "description": "Production environment configuration",
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  },
+  "active_config": null,
+  "last_modified": "2025-01-01T00:00:00Z",
+  "version": "1.0"
+}
