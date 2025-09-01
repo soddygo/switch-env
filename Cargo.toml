@@ -3,7 +3,7 @@ name = "envswitch"
 version = "0.1.0"
 edition = "2021"
 description = "A tool for managing and switching environment variable configurations"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["soddygo"]
 license = "MIT"
 repository = "https://github.com/soddygo/envswitch"
 
