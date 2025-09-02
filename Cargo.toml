@@ -1,6 +1,6 @@
 [package]
 name = "envswitch"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A tool for managing and switching environment variable configurations"
 authors = ["soddygo"]
