@@ -46,17 +46,36 @@ envswitch set kimi \
   -e ANTHROPIC_AUTH_TOKEN=sk-your-kimi-token
 ```
 
-### 2. Switch between configurations
+### 2. Install shell integration (recommended)
 
 ```bash
-# Switch to DeepSeek configuration
-eval "$(envswitch use deepseek)"
+# Install shell integration for seamless usage
+./install-shell-integration.sh
 
-# Switch to Kimi configuration
+# Restart your shell or source your config
+source ~/.zshrc  # or ~/.bashrc, ~/.config/fish/config.fish
+```
+
+### 3. Switch between configurations
+
+```bash
+# With shell integration (no eval needed!)
+envswitch use deepseek
+envswitch use kimi
+
+# Or use short aliases
+esu deepseek
+esu kimi
+
+# Interactive selector
+esw
+
+# Without shell integration (traditional way)
+eval "$(envswitch use deepseek)"
 eval "$(envswitch use kimi)"
 ```
 
-### 3. View your configurations
+### 4. View your configurations
 
 ```bash
 # List all configurations
@@ -68,9 +87,35 @@ envswitch status
 
 ## Shell Integration
 
-For the best experience, add these aliases to your shell configuration:
+### 🚀 Easy Setup (Recommended)
 
-### Zsh (~/.zshrc)
+For the best experience, install our shell integration that eliminates the need for `eval`:
+
+```bash
+# Run the installer
+./install-shell-integration.sh
+
+# Restart your shell or source your config file
+source ~/.zshrc  # for zsh
+source ~/.bashrc # for bash
+source ~/.config/fish/config.fish # for fish
+```
+
+After installation, you can use envswitch directly:
+
+```bash
+# No more eval needed! 🎉
+envswitch use deepseek    # Direct switch
+esu kimi                 # Short alias
+esw                      # Interactive selector
+esq myconfig             # Quick create from current environment
+```
+
+### Manual Shell Integration
+
+If you prefer manual setup, add these aliases to your shell configuration:
+
+#### Zsh (~/.zshrc)
 
 ```bash
 alias switch-deepseek='eval "$(envswitch use deepseek)"'
@@ -79,7 +124,7 @@ alias envs='envswitch list'
 alias envstatus='envswitch status'
 ```
 
-### Fish (~/.config/fish/config.fish)
+#### Fish (~/.config/fish/config.fish)
 
 ```fish
 alias switch-deepseek='eval (envswitch use deepseek)'
@@ -88,7 +133,7 @@ alias envs='envswitch list'
 alias envstatus='envswitch status'
 ```
 
-### Bash (~/.bashrc)
+#### Bash (~/.bashrc)
 
 ```bash
 alias switch-deepseek='eval "$(envswitch use deepseek)"'
@@ -262,6 +307,39 @@ Configurations are stored in:
 
 - **macOS/Linux**: `~/.config/envswitch/config.json`
 - **Windows**: `%APPDATA%\envswitch\config.json`
+
+## FAQ
+
+### Why do I need `eval "$(envswitch use config)"` instead of just `envswitch use config`?
+
+This is a technical limitation, not a design flaw. Here's why:
+
+1. **Subprocess limitation**: When you run `envswitch use config`, it runs in a subprocess that cannot modify your current shell's environment variables.
+
+2. **Shell command generation**: `envswitch use config` outputs shell commands like:
+
+   ```bash
+   export ANTHROPIC_BASE_URL='https://api.deepseek.com'
+   export ANTHROPIC_MODEL='deepseek-chat'
+   ```
+
+3. **eval executes commands**: `eval "$(envswitch use config)"` makes your shell execute these export commands, setting the environment variables.
+
+**Solution**: Use our shell integration! Run `./install-shell-integration.sh` to enable direct usage:
+
+```bash
+envswitch use config  # No eval needed after integration!
+```
+
+### How does the shell integration work?
+
+The shell integration creates a wrapper function that:
+
+1. Captures the output from `envswitch use config`
+2. Automatically runs `eval` on the output
+3. Provides a seamless experience
+
+It's completely safe and just automates what you would do manually.
 
 ## Troubleshooting
 
